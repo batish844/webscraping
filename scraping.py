@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from fake_useragent import UserAgent
+from datetime import datetime
 
 def setup_driver():
     options = Options()
@@ -48,56 +49,46 @@ def scrape_coingecko_page():
     coins = []
     for row in rows:
         try:
-            # Image: locate by img element containing part of its class name
             image = row.find_element(By.XPATH, ".//img[contains(@class, 'tw-mr-2')]").get_attribute("src")
         except Exception:
             image = None
         
         try:
-            # Coin name: get the element that holds the coin name
             name_element = row.find_element(By.XPATH, ".//div[contains(@class, 'tw-font-semibold') and contains(@class, 'tw-text-sm') and contains(@class, 'tw-leading-5')]")
-            # Get only the direct text content (first text node) of the element
             coin_name = name_element.text.strip().split('\n')[0]
         except Exception:
             coin_name = None
         
         try:
-            # Ticker: located in a nested element (using a class that contains 'tw-text-xs' and 'tw-leading-4')
             ticker_element = row.find_element(By.XPATH, ".//div[contains(@class, 'tw-text-xs') and contains(@class, 'tw-leading-4')]")
             coin_ticker = ticker_element.text.strip()
         except Exception:
             coin_ticker = None
         
         try:
-            # Price: locate span with both data-price-target="price" and data-coin-id attributes
             price_element = row.find_element(By.XPATH, ".//span[@data-price-target='price' and @data-coin-id]")
             coin_price = price_element.text.strip()
         except Exception:
             coin_price = None
         
         try:
-            # Price change 1h: using a dynamic attribute selector for data-attr
             price_change_1h = row.find_element(By.XPATH, ".//span[contains(@data-attr, 'price_change_percentage_1h')]").text.strip()
         except Exception:
             price_change_1h = None
         
         try:
-            # Price change 24h
             price_change_24h = row.find_element(By.XPATH, ".//span[contains(@data-attr, 'price_change_percentage_24h')]").text.strip()
         except Exception:
             price_change_24h = None
         
         try:
-            # Price change 7d
             price_change_7d = row.find_element(By.XPATH, ".//span[contains(@data-attr, 'price_change_percentage_7d')]").text.strip()
         except Exception:
             price_change_7d = None
         
         try:
-            # Volume 24h and Market Cap: locate the td elements that contain the data
             volume_td_xpath = ".//td[.//span[@data-price-target='price' and not(@data-coin-id)] and contains(@data-sort, '')]"
             volume_tds = row.find_elements(By.XPATH, volume_td_xpath)
-            
             if len(volume_tds) >= 2:
                 sorted_tds = sorted(volume_tds, key=lambda td: float(td.get_attribute("data-sort") or 0))
                 volume_24h = sorted_tds[0].find_element(By.XPATH, ".//span").text.strip()
@@ -125,25 +116,20 @@ def scrape_coingecko_page():
     return coins
 
 def save_csv(data):
-    file_name = "coingecko_scraped_data.csv"
-    # Define the expected columns for consistency
+    # Generate a unique filename using the current timestamp.
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"coingecko_scraped_data_{timestamp}.csv"
+    
+    # Define expected columns for consistency
     columns = ["Image", "Name", "Ticker", "Price", "Price Change 1h", 
                "Price Change 24h", "Price Change 7d", "24h Volume", "Market Cap"]
-    try:
-        df = pd.read_csv(file_name)
-    except FileNotFoundError:
-        df = pd.DataFrame(columns=columns)
-    
-    # Create a DataFrame from new data
-    new_df = pd.DataFrame(data)
-    df = pd.concat([df, new_df], ignore_index=True)
+    df = pd.DataFrame(data, columns=columns)
     df.to_csv(file_name, index=False)
-    print("Data saved to CSV file.")
+    print(f"Data saved to {file_name}")
 
 def main():
     coins_data = scrape_coingecko_page()
     if coins_data:
-        # You can print the new data or the whole DataFrame if desired
         df_new = pd.DataFrame(coins_data)
         print(df_new)
         save_csv(coins_data)
