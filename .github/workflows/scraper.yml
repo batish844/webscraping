@@ -23,12 +23,12 @@ jobs:
 
 
       - name: Run Selenium scraper
-        run: python scraper.py
+        run: python scraping.py
 
       - name: Commit and Push updated CSV
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add bitcoin_hourly_data.csv
+          git add bitcoin_min_data.csv
           git commit -m "Updated Bitcoin data (10-min intervals)"
           git push
